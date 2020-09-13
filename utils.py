@@ -281,12 +281,12 @@ def get_turnover_plot_data(df_stats=None,team=None):
     date_list.extend(date_list)
     oos = ["Offense" for i in range(len(o_to_list))]
     dds = ["Defense" for i in range(len(d_to_list))]
-    oos.extend(dds)
+    dds.extend(oos)
     median_of_offense = statistics.median(o_to_list)
     median_of_defense = statistics.median(d_to_list)
-    o_to_list.extend(d_to_list)
+    d_to_list.extend(o_to_list)
 
-    plot_data = pd.DataFrame({"Date":date_list,"Line":oos, "Turnovers":o_to_list}).sort_values("Date")
+    plot_data = pd.DataFrame({"Date":date_list,"Line":dds, "Turnovers":d_to_list}).sort_values("Date")
     return(plot_data,median_of_offense,median_of_defense)
 
 def plot_turnovers(df_stats,
@@ -317,26 +317,32 @@ def plot_turnovers(df_stats,
         j+=1
 
     if sort_by == "offense":
-        df_median = df_median.sort_values('Median_O',ascending=True)
+        df_median = df_median.sort_values('Median_O',ascending=False)
     elif sort_by == "defense":
-        df_median = df_median.sort_values('Median_D',ascending=False)
+        df_median = df_median.sort_values('Median_D',ascending=True)
 
     for k in range(len(df_median)):
 
         row = df_median.iloc[k]
         tm = row['Team']
-        fig.add_trace(go.Box(x=plot_data_dict[tm]['Line'],
-                            y=plot_data_dict[tm]['Turnovers'],
-                            marker_color=graph_colors_dict[tm],
-                            marker_line_color = "black",
-                            name=tm)
+        print(plot_data_dict[tm]['Turnovers'])
+        print(plot_data_dict[tm]['Line'])
+        fig.add_trace(go.Box(x=plot_data_dict[tm]['Turnovers'],
+                             y=plot_data_dict[tm]['Line'],
+                             marker_color=graph_colors_dict[tm],
+                             marker_line_color = "black",
+                             name=tm)
                     )
     fig.update_layout(title="Turnovers Committed (O) and Turnovers Forced (D), 2019 Season",
                       xaxis_title="Team",
                       yaxis_title="Count of Turnovers",
                       boxmode='group',
-                      plot_bgcolor='rgb(220,220,220)'
+                      plot_bgcolor='rgb(220,220,220)',
+                      height= 1500
                       )
+    
+    fig.update_traces(orientation='h')
+
     return(fig)
 
 def get_season_total_turnovers(df_stats,teams_list):
@@ -384,8 +390,8 @@ def get_points_plot_data(df_stats=None,team=None):
             d_points_list.append(df_points_row["team1_points_scored"])
             o_points_list.append(df_points_row["team2_points_scored"])
 
-    o_points_count = sum(o_points_list)/len(o_points_list)
-    d_points_count = sum(d_points_list)/len(d_points_list)
+    o_points_count = round(sum(o_points_list)/len(o_points_list),2)
+    d_points_count = round(sum(d_points_list)/len(d_points_list),2)
 
     plus_minus = sum(o_points_list) - sum(d_points_list)
     
@@ -422,44 +428,49 @@ def plot_goals(teams_list=None,
         plus_minus_list.append(plus_minus)
 
     df_plot = pd.DataFrame.from_dict({"Team":teams_list,"GoalsScored":points_list_o,"GoalsAllowed":points_list_d,"PlusMinus":plus_minus_list, "Colors":tm_colors},orient='index').transpose()
-    df_plot = df_plot.sort_values("PlusMinus",ascending=False)
+    df_plot = df_plot.sort_values("PlusMinus",ascending=True)
     hover_text = [str(df_plot['Team'].iloc[i]) + " +/- : " + str(df_plot['PlusMinus'].iloc[i]) for i in range(len(df_plot))]
     df_plot['hover_text'] = hover_text
 
     fig = go.Figure()
-    fig.add_trace(go.Bar(name="Goals Scored (Offense)",
-                         x=df_plot['Team'],
-                         y=df_plot['GoalsScored'],
-                         text=df_plot['GoalsScored'],
-                         textposition='auto',
-                         textfont=dict(
-                                        family="sans serif",
-                                        size=12,
-                                        ),
-                         marker_line_color="black",
-                         hovertext=df_plot['hover_text'],
-                         opacity=0.6)
-                )
 
-    fig.add_trace(go.Bar(name="Goals Allowed (Defense)",
-                         x=df_plot['Team'],
-                         y=df_plot['GoalsAllowed'],
+    fig.add_trace(go.Bar(name="Avg. Goals Allowed (Defense)",
+                         y=df_plot['Team'],
+                         x=df_plot['GoalsAllowed'],
                          text=df_plot['GoalsAllowed'],
                          textposition='auto',
                          textfont=dict(
-                                        family="sans serif",
-                                        size=12,
+                                        family="arial",
+                                        size=14,
                                         ),
                          marker_line_color="black",
                          hovertext=df_plot['hover_text'],
-                         opacity=0.3)
+                         opacity=0.3,
+                         orientation='h')
                  )
-    fig.update_layout(title="Goals Scored (O) and Goals Allowed (D), 2019 Season - Sorted By +/- (Descending, Left to Right)",
+
+    fig.add_trace(go.Bar(name="Avg. Goals Scored (Offense)",
+                         y=df_plot['Team'],
+                         x=df_plot['GoalsScored'],
+                         text=df_plot['GoalsScored'],
+                         textposition='auto',
+                         textfont=dict(
+                                        family="arial",
+                                        size=14,
+                                        ),
+                         marker_line_color="black",
+                         hovertext=df_plot['hover_text'],
+                         opacity=0.6,
+                         orientation='h')
+                )
+
+    fig.update_layout(title="Avg. Goals Scored (O) and Avg. Goals Allowed (D), 2019 Season: Sorted By Team +/- (Descending, Left to Right)",
                       xaxis_title="Team",
-                      yaxis_title="Count of Goals (2019 Season Totals)",
+                      yaxis_title="Avg. Goals Per Game (2019 Season)",
                       bargap=0.15, # gap between bars of adjacent location coordinates.
                       bargroupgap=0.1, # gap between bars of the same location coordinate.
-                      plot_bgcolor='rgb(220,220,220)'
+                      plot_bgcolor='rgb(220,220,220)',
+                      height= 1500
                       #legend_orientation="h"
                       )
 
@@ -678,3 +689,4 @@ def collect_and_plot_passes_nb(teams_list=None,
         iplot(fig)
         
     return(dict_of_passing_stats, team_sequences, all_sequences)
+
